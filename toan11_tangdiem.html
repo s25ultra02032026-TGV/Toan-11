@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Ôn Tập Toán 12 - THPT Nguyễn Văn Cừ</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+    
+    <style>
+        :root { --primary: #1e3a8a; --accent: #3b82f6; --success: #10b981; --error: #ef4444; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #1e293b; margin: 0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .hidden { display: none; }
+        h1, h2, h3 { text-align: center; color: var(--primary); }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; transition: 0.3s; }
+        input:focus { border-color: var(--accent); outline: none; }
+        button { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: var(--primary); transform: translateY(-1px); }
+        #timer { font-size: 1.8rem; color: var(--error); font-weight: 800; text-align: center; position: sticky; top: 0; background: rgba(255,255,255,0.9); padding: 15px; z-index: 100; border-bottom: 4px solid var(--accent); border-radius: 8px; }
+        .question-card { margin-bottom: 40px; padding: 25px; border: 1px solid #edf2f7; border-radius: 12px; background: #fff; }
+        .option { margin: 12px 0; padding: 15px; background: #f1f5f9; border: 2px solid transparent; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+        .option:hover { background: #e2e8f0; }
+        .option.selected { border-color: var(--accent); background: #dbeafe; color: var(--primary); font-weight: bold; }
+        .explanation { margin-top: 20px; padding: 20px; background: #ecfdf5; border-left: 6px solid var(--success); border-radius: 8px; font-size: 0.95rem; display: none; }
+        .badge { display: inline-block; padding: 5px 12px; border-radius: 6px; font-weight: bold; margin-bottom: 10px; }
+        .correct-badge { background: #d1fae5; color: #065f46; }
+        .wrong-badge { background: #fee2e2; color: #991b1b; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 14px; border: 1px solid #e2e8f0; text-align: center; }
+        th { background: var(--accent); color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="start-screen">
+        <h3>SỞ GIÁO DỤC & ĐÀO TẠO ĐĂK LĂK</h3>
+        <h2>THPT NGUYỄN VĂN CỪ</h2>
+        <h1>ÔN TẬP TOÁN 12 - MÃ ĐỀ 001</h1>
+        <div style="max-width: 400px; margin: 30px auto;">
+            <input type="text" id="stuName" placeholder="Họ và tên" required>
+            <input type="text" id="stuClass" placeholder="Lớp (Ví dụ: 12A1)" required>
+            <input type="tel" id="stuPhone" placeholder="Số điện thoại" required>
+            <button onclick="initQuiz()">BẮT ĐẦU LÀM BÀI (12 PHÚT)</button>
+        </div>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div id="timer">Thời gian: 12:00</div>
+        <div id="questions-area"></div>
+        <button onclick="submitExam()" id="btn-submit" style="background: var(--success);">NỘP BÀI</button>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h2>KẾT QUẢ CỦA BẠN</h2>
+        <div id="final-score" style="text-align: center; font-size: 1.6rem; padding: 20px; border: 2px dashed var(--accent); margin: 20px 0;"></div>
+        <h3 style="text-align: left; border-bottom: 2px solid #eee; padding-bottom: 10px;">Lời giải chi tiết:</h3>
+        <div id="review-area"></div>
+        <button onclick="toggleLeaderboard()" style="background: var(--primary);">XEM BẢNG XẾP HẠNG</button>
+        <button onclick="location.reload()" style="background: #64748b; margin-top: 15px;">THOÁT</button>
+    </div>
+
+    <div id="leaderboard-screen" class="hidden">
+        <h2>BẢNG VÀNG THÀNH TÍCH</h2>
+        <table>
+            <thead><tr><th>Hạng</th><th>Tên</th><th>Lớp</th><th>Điểm</th><th>Thời gian</th></tr></thead>
+            <tbody id="lb-data"></tbody>
+        </table>
+        <button onclick="backToReview()" style="margin-top: 20px;">QUAY LẠI XEM LỜI GIẢI</button>
+    </div>
+</div>
+
+<script>
+    // NỘP DỮ LIỆU CÂU HỎI TỪ FILE CỦA BẠN
+    const quizData = [
+        { type: 'mcq', q: "Một xạ thủ bắn lần lượt 2 viên đạn. Xác suất viên thứ nhất trúng là $0,31$, viên thứ hai là $0,15$. Tính xác suất cả hai lần bắn đều không trúng đích.", options: ["$0,10$", "$0,59$", "$0,26$", "$0,05$"], correct: 1, exp: "Gọi $A$ là viên 1 trúng, $B$ là viên 2 trúng. Ta có $P(\overline{A})=0,69$ và $P(\overline{B})=0,85$. Do độc lập nên $P = 0,69 \\times 0,85 = 0,5865 \\approx 0,59$." },
+        { type: 'mcq', q: "Viết phương trình tiếp tuyến của đồ thị hàm số $y = -5x^3 + 5x^2 - x - 5$ tại điểm $N(2; -27)$.", options: ["$y = 55 - 41x$", "$y = -41x - 27$", "$y = -41x - 109$", "$y = -39x$"], correct: 0, exp: "$y' = -15x^2 + 10x - 1 \\Rightarrow y'(2) = -41$. PTTT: $y = -41(x - 2) - 27 \\Leftrightarrow y = 55 - 41x$." },
+        { type: 'mcq', q: "Tập nghiệm của bất phương trình $f'(x) + 3 > 0$ với $f(x) = \\frac{20x^3}{3} + 19x^2 + 11x - 9$ là:", options: ["$S = (-\\frac{7}{5}; -\\frac{1}{2})$", "$S = \\mathbb{R}$", "$(-\\infty; -\\frac{7}{5}) \\cup (-\\frac{1}{2}; +\\infty)$", "$S = (-\\infty; -\\frac{7}{5}] \\cup [-\\frac{1}{2}; +\\infty)$"], correct: 2, exp: "$f'(x) = 20x^2 + 38x + 11$. BPT: $20x^2 + 38x + 14 > 0 \\Leftrightarrow x < -1,4$ hoặc $x > -0,5$." },
+        { type: 'mcq', q: "Tính đạo hàm của hàm số $y = x\\sqrt{5x-3}$.", options: ["$y' = \\frac{5}{2\\sqrt{x}}$", "$y' = \\frac{15x-3}{2\\sqrt{5x-3}}$", "$y' = 5 + \\frac{1}{2\\sqrt{x}}$", "$y' = \\frac{10x-3}{\\sqrt{x}}$"], correct: 1, exp: "Sử dụng $(uv)' = u'v + uv'$. Ta được: $y' = \\sqrt{5x-3} + x \\cdot \\frac{5}{2\\sqrt{5x-3}} = \\frac{15x-3}{2\\sqrt{5x-3}}$." },
+        { type: 'mcq', q: "Tính đạo hàm của hàm số $y = \\sqrt{\\sin 9x - 9}$.", options: ["$y' = \\frac{9\\cos 9x}{2\\sqrt{\\sin 9x - 9}}$", "$y' = \\frac{-9}{2\\sqrt{\\sin 9x - 9}}$", "$y' = \\frac{1}{2\\sqrt{\\sin 9x - 9}}$", "$y' = \\frac{-9\\cos 9x}{2\\sqrt{\\sin 9x - 9}}$"], correct: 0, exp: "$y' = \\frac{(\\sin 9x - 9)'}{2\\sqrt{\\sin 9x - 9}} = \\frac{9\\cos 9x}{2\\sqrt{\\sin 9x - 9}}$." },
+        { type: 'mcq', q: "Tính đạo hàm cấp hai của hàm số $y = \\sin(5x - 9)$.", options: ["$y'' = 25\\sin(5x - 9)$", "$y'' = -25\\sin(5x - 9)$", "$y'' = \\cos(5x - 9)$", "$y'' = 5\\cos(5x - 9)$"], correct: 1, exp: "$y' = 5\\cos(5x-9) \\Rightarrow y'' = -25\\sin(5x-9)$." },
+        { type: 'mcq', q: "Vật $s(t) = 8t^2 + 12t + 7$. Tính vận tốc tại thời điểm $t = 2$.", options: ["$44$ m/s", "$68$ m/s", "$63$ m/s", "$16$ m/s"], correct: 0, exp: "$v(t) = s'(t) = 16t + 12$. Tại $t=2$, $v(2) = 44$ m/s." },
+        { type: 'tf', q: "Xét tính đúng - sai:", sub: [
+            { t: "Hàm số $y = 3x^3 - 4x^2 + 1$ có $y'' = 18x - 8$", a: "đúng" },
+            { t: "Gia tốc của $s(t) = t^2 + 3t + 2$ là $a(t) = 2t + 3$", a: "sai" },
+            { t: "Hàm số $y = (2x - 1)\\cos x$ có $y' = -(2x-1)\\sin x + 2\\cos x$", a: "đúng" },
+            { t: "Tiếp tuyến $y = \\frac{x-4}{x-2}$ có $k=2$ là $y=2x-7$ và $y=2x+1$", a: "đúng" }
+        ], exp: "a) Đúng. b) Sai (Gia tốc $a=2$). c) Đúng. d) Đúng (giải $y'=2$ ra $x=1, x=3$)." },
+        { type: 'short', q: "Tính xác suất Thảo và Hoa có cùng phần thưởng (kết quả làm tròn đến 0.01).", ans: "0.32", exp: "Tổng cách chọn: $C_{12}^2$. Cùng loại: $C_3^2+C_3^2+C_6^2$. Kết quả: $21/66 \\approx 0,32$." },
+        { type: 'short', q: "Tính $a+b$ biết xác suất lấy được 2 bi đỏ là $a/b$.", ans: "31", exp: "Tìm được hộp 1: 15 bi, hộp 2: 10 bi. Bi đỏ tương ứng: 4 và 9. $P = \\frac{4}{15} \\cdot \\frac{9}{10} = \\frac{6}{25} \\Rightarrow a=6, b=25$. Vậy $a+b=31$." }
+    ];
+
+    let timer, countdown = 12 * 60, currentAnswers = {}, userProfile = {};
+
+    function initQuiz() {
+        const name = document.getElementById('stuName').value;
+        const cls = document.getElementById('stuClass').value;
+        const phone = document.getElementById('stuPhone').value;
+        if(!name || !cls || !phone) return alert("Vui lòng điền đủ thông tin!");
+
+        const logs = JSON.parse(localStorage.getItem('MathNVC_Logs') || '[]');
+        if(logs.some(l => l.phone === phone)) return alert("Số điện thoại này đã dự thi rồi!");
+
+        userProfile = { name, cls, phone, start: Date.now() };
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        renderQuiz();
+        timer = setInterval(runTimer, 1000);
+    }
+
+    function runTimer() {
+        countdown--;
+        let m = Math.floor(countdown/60), s = countdown%60;
+        document.getElementById('timer').innerText = `Thời gian: ${m}:${s<10?'0'+s:s}`;
+        if(countdown <= 0) submitExam();
+    }
+
+    function renderQuiz() {
+        const area = document.getElementById('questions-area');
+        quizData.forEach((item, i) => {
+            let html = `<div class="question-card"><h4>Câu ${i+1}: ${item.q}</h4>`;
+            if(item.type === 'mcq') {
+                html += item.options.map((opt, oi) => `<div class="option" data-q="${i}" onclick="pickMcq(${i},${oi},this)">${String.fromCharCode(65+oi)}. ${opt}</div>`).join('');
+            } else if(item.type === 'tf') {
+                item.sub.forEach((s, si) => {
+                    html += `<div style="margin:10px 0;">${si+1}. ${s.t} <select id="tf-${i}-${si}" onchange="saveTf(${i},${si})"><option value="">--Chọn--</option><option value="đúng">Đúng</option><option value="sai">Sai</option></select></div>`;
+                });
+            } else {
+                html += `<input type="text" id="sa-${i}" placeholder="Đáp án..." onchange="saveSa(${i})">`;
+            }
+            area.innerHTML += html + `</div>`;
+        });
+        MathJax.typesetPromise();
+    }
+
+    function pickMcq(q, o, el) {
+        currentAnswers[q] = o;
+        document.querySelectorAll(`[data-q="${q}"]`).forEach(opt => opt.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+    function saveTf(q, s) { if(!currentAnswers[q]) currentAnswers[q] = {}; currentAnswers[q][s] = document.getElementById(`tf-${q}-${s}`).value; }
+    function saveSa(q) { currentAnswers[q] = document.getElementById(`sa-${q}`).value.trim().replace(',', '.'); }
+
+    function submitExam() {
+        clearInterval(timer);
+        let score = 0;
+        const reviewArea = document.getElementById('review-area');
+        reviewArea.innerHTML = "";
+
+        quizData.forEach((item, i) => {
+            let correct = false, userPick = currentAnswers[i];
+            if(item.type === 'mcq') correct = (userPick === item.correct);
+            else if(item.type === 'tf') correct = item.sub.every((s, si) => userPick && userPick[si] === s.a);
+            else correct = (userPick === item.ans);
+
+            if(correct) score++;
+
+            reviewArea.innerHTML += `
+                <div class="question-card" style="border-left: 8px solid ${correct?'var(--success)':'var(--error)'}">
+                    <span class="badge ${correct?'correct-badge':'wrong-badge'}">${correct?'ĐÚNG':'SAI'}</span>
+                    <p><strong>Câu ${i+1}:</strong> ${item.q}</p>
+                    <div class="explanation" style="display:block"><strong>Giải chi tiết:</strong><br>${item.exp}</div>
+                </div>`;
+        });
+
+        const finalVal = (score / quizData.length * 10).toFixed(2);
+        const timeTaken = Math.floor((Date.now() - userProfile.start)/1000);
+        userProfile.score = finalVal;
+        userProfile.timeStr = `${Math.floor(timeTaken/60)}p ${timeTaken%60}s`;
+        userProfile.totalSec = timeTaken;
+
+        const logs = JSON.parse(localStorage.getItem('MathNVC_Logs') || '[]');
+        logs.push(userProfile);
+        localStorage.setItem('MathNVC_Logs', JSON.stringify(logs));
+
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('final-score').innerHTML = `Điểm: <b style="color:var(--success)">${finalVal}</b> | Thời gian: ${userProfile.timeStr}`;
+        MathJax.typesetPromise();
+    }
+
+    function toggleLeaderboard() {
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('leaderboard-screen').classList.remove('hidden');
+        const data = JSON.parse(localStorage.getItem('MathNVC_Logs') || '[]').sort((a,b) => b.score - a.score || a.totalSec - b.totalSec);
+        document.getElementById('lb-data').innerHTML = data.map((l, i) => `<tr><td>${i+1}</td><td>${l.name}</td><td>${l.cls}</td><td>${l.score}</td><td>${l.timeStr}</td></tr>`).join('');
+    }
+
+    function backToReview() { document.getElementById('leaderboard-screen').classList.add('hidden'); document.getElementById('result-screen').classList.remove('hidden'); }
+</script>
+
+</body>
+</html>
